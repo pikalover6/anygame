@@ -73,7 +73,27 @@ The user's game:`;
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function stripFences(text) {
-  return text.replace(/^```[a-z]*\n?/i, '').replace(/```\s*$/i, '').trim();
+  // Extract content from the first fenced code block, even when there is prose before/after it.
+  // LLMs sometimes return "Here is the code:\n```javascript\n...\n```" instead of raw code.
+  const fenceMatch = text.match(/```(?:[a-z0-9]*)\r?\n([\s\S]*?)```/i);
+  if (fenceMatch) return fenceMatch[1].trim();
+  // Fall back: strip leading/trailing fences if present at the start/end of the string.
+  return text.replace(/^```[a-z0-9]*\r?\n?/i, '').replace(/```\s*$/i, '').trim();
+}
+
+// Remove ES module import/export declarations that are invalid in an AsyncFunction body.
+// LLMs occasionally emit them despite being told not to; all needed globals are already
+// provided as window.* properties so removing these is always safe.
+function sanitizeCode(code) {
+  // Remove import declarations — handles single-line and multi-line forms by matching
+  // from the `import` keyword up to the closing quote+semicolon without relying on
+  // line-boundary anchors (which would miss multi-line specifier lists).
+  code = code.replace(/\bimport\s+(?:[\w$*{},\s]+?\s+from\s+)?['"][^'"]*['"]\s*;?/g, '');
+  // Remove top-level export modifiers (export default / export { ... }) which are
+  // likewise invalid in a function-body context.
+  code = code.replace(/^export\s+default\s+/gm, '');
+  code = code.replace(/\bexport\s*\{[\s\S]*?\}\s*;?/g, '');
+  return code.trim();
 }
 
 async function fetchWithTimeout(url, options, timeoutMs = 45000) {
@@ -243,7 +263,8 @@ export async function generateGameCode(userPrompt, onStatus = () => {}) {
   for (const provider of providers) {
     try {
       onStatus(`Generating with ${provider.name}…`);
-      const code = await provider.fn();
+      const raw = await provider.fn();
+      const code = sanitizeCode(raw);
       if (!code || code.length < 100) throw new Error('Response too short — likely an error');
       return code;
     } catch (err) {
