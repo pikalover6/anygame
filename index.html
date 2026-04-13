@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AnyGame — Describe Any 3D Game, Play It Now</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ── Animated star field ─────────────────────────────────────────────────── -->
+<canvas id="stars"></canvas>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!--  PROMPT SCREEN                                                            -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="prompt-screen" class="screen">
+  <div class="title-block">
+    <h1>AnyGame</h1>
+    <p>Describe any 3D game&nbsp;— it gets generated and you play it.</p>
+  </div>
+
+  <div class="card">
+    <label for="game-prompt">What game do you want to play?</label>
+    <textarea
+      id="game-prompt"
+      placeholder="e.g. A spooky first-person horror game set in an abandoned Victorian mansion at night, with ghosts that chase me through dark corridors…"
+      autofocus
+    ></textarea>
+
+    <div class="card-footer">
+      <!-- Example prompts -->
+      <div class="example-prompts">
+        <span class="chip" data-prompt="A medieval fantasy RPG where I explore a huge open world, fight dragons, collect treasure, and talk to villagers who give me quests">⚔️ Medieval RPG</span>
+        <span class="chip" data-prompt="A fast-paced first-person shooter in a futuristic space station where I fight waves of alien robots that get harder each round">🚀 Space FPS</span>
+        <span class="chip" data-prompt="A relaxing sailing game where I navigate a small boat across a peaceful ocean with islands to discover and sea creatures to encounter">⛵ Ocean Sailing</span>
+        <span class="chip" data-prompt="A post-apocalyptic survival game where I scavenge a destroyed city for supplies while avoiding zombie hordes and building a base">🧟 Zombie Survival</span>
+        <span class="chip" data-prompt="A magical underwater exploration game where I swim through a colorful coral reef, discover sunken ruins, and interact with sea life">🐠 Underwater</span>
+        <span class="chip" data-prompt="A cozy farming simulator where I tend crops, raise animals, build my farm, and chat with friendly townsfolk">🌾 Farm Sim</span>
+      </div>
+
+      <!-- Actions -->
+      <div style="display:flex;gap:10px;align-items:center;margin-top:12px;width:100%;justify-content:space-between;flex-wrap:wrap">
+        <button class="btn-icon" id="settings-btn" title="API Keys &amp; Settings">⚙️</button>
+        <button class="btn btn-primary" id="generate-btn">
+          <span>✨</span> Generate Game
+        </button>
+      </div>
+
+      <p style="font-size:.75rem;color:var(--muted);margin-top:14px;line-height:1.5">
+        Works free out-of-the-box via Pollinations AI.&nbsp;
+        Add a <a href="https://console.groq.com/keys" target="_blank" rel="noopener" style="color:var(--accent)">Groq</a>
+        or <a href="https://openrouter.ai/keys" target="_blank" rel="noopener" style="color:var(--accent)">OpenRouter</a>
+        key in ⚙️&nbsp;Settings for faster, smarter generation.
+        Press <kbd style="font-size:.75rem;background:rgba(255,255,255,.1);padding:2px 6px;border-radius:4px">Ctrl+Enter</kbd> to generate.
+      </p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!--  LOADING SCREEN                                                           -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="loading-screen" class="screen hidden">
+  <div class="spinner"></div>
+  <div class="loading-title" id="loading-game-title">Generating your game…</div>
+  <div class="progress-bar-wrap">
+    <div class="progress-bar" id="progress-bar"></div>
+  </div>
+  <div id="loading-status">Connecting to AI…</div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!--  GAME SCREEN                                                              -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div id="game-screen" class="screen hidden">
+  <iframe
+    id="game-frame"
+    sandbox="allow-scripts"
+    allow="pointer-lock"
+    title="Game"
+  ></iframe>
+</div>
+
+<!-- ── Game toolbar (shown briefly on mouse-move) ─────────────────────────── -->
+<div id="game-toolbar">
+  <span id="toolbar-game-title">AnyGame</span>
+  <div class="toolbar-actions">
+    <button class="toolbar-btn" id="view-source-btn">View Source</button>
+    <button class="toolbar-btn" id="new-game-btn">← New Game</button>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<!--  SETTINGS MODAL                                                           -->
+<!-- ══════════════════════════════════════════════════════════════════════════ -->
+<div class="modal-backdrop" id="settings-modal">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="settings-heading">
+    <h3 id="settings-heading">⚙️ API Keys &amp; Settings</h3>
+
+    <div class="field-group">
+      <label for="groq-key">Groq API Key</label>
+      <input type="password" id="groq-key" placeholder="gsk_…" autocomplete="off">
+      <small>
+        Free tier — fast Llama 3.3 70B inference.
+        Get a key at <a href="https://console.groq.com/keys" target="_blank" rel="noopener">console.groq.com</a>.
+      </small>
+    </div>
+
+    <div class="field-group">
+      <label for="or-key">OpenRouter API Key</label>
+      <input type="password" id="or-key" placeholder="sk-or-…" autocomplete="off">
+      <small>
+        Access to many free models (Gemini 2.0 Flash, Llama, DeepSeek, Qwen, etc.).
+        Get a key at <a href="https://openrouter.ai/keys" target="_blank" rel="noopener">openrouter.ai</a>.
+      </small>
+    </div>
+
+    <div class="field-group" style="background:rgba(124,106,255,.08);border:1px solid rgba(124,106,255,.2);border-radius:10px;padding:14px">
+      <p style="font-size:.82rem;color:var(--muted);line-height:1.6;margin:0">
+        <strong style="color:var(--text)">No key?</strong> No problem — AnyGame falls back to
+        <a href="https://pollinations.ai" target="_blank" rel="noopener">Pollinations AI</a>
+        (free, no sign-up, powered by GPT-4o).<br>
+        Keys are stored only in your browser's localStorage and never sent to our servers.
+      </p>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" id="settings-close">Cancel</button>
+      <button class="btn btn-primary" id="settings-save" style="padding:10px 24px;font-size:.95rem">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Error toast ─────────────────────────────────────────────────────────── -->
+<div id="error-toast" role="alert"></div>
+
+<!-- ── App entry point (ES module) ────────────────────────────────────────── -->
+<script type="module" src="src/app.js"></script>
+
+</body>
+</html>
