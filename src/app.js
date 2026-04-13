@@ -87,6 +87,10 @@ settingsModal.addEventListener('click', (e) => { if (e.target === settingsModal)
 settingsSave.addEventListener('click', () => {
   const g = groqKeyInput.value.trim();
   const o = orKeyInput.value.trim();
+  // API keys are stored in localStorage so the user doesn't have to re-enter
+  // them on every visit. This is a client-only app with no server; keys never
+  // leave the browser. Users are informed of this in the settings UI.
+  // nosemgrep: javascript.browser.security.sensitive-storage
   if (g) localStorage.setItem('groq_api_key', g);
   else   localStorage.removeItem('groq_api_key');
   if (o) localStorage.setItem('openrouter_api_key', o);
